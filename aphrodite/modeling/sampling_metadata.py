@@ -319,6 +319,7 @@ class SamplingTensors:
     eta_cutoffs: torch.Tensor
     epsilon_cutoffs: torch.Tensor
     typical_ps: torch.Tensor
+    dry_penalities: torch.Tensor
     smoothing_factors: torch.Tensor
     smoothing_curves: torch.Tensor
     sampling_seeds: torch.Tensor
