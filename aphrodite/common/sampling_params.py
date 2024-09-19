@@ -95,6 +95,10 @@ class SamplingParams:
         dynatemp_max: Maximum temperature for dynatemp sampling.
             Range [0, inf).
         dynatemp_exponent: Exponent for dynatemp sampling. Range [0, inf).
+        dry_multiplier: multiplier for the DRY sampler.
+        dry_allowed_length: allowed length for the DRY sampler.
+        dry_base: base for the DRY sampler.
+        dry_sequence_breakers: sequence breakers for the DRY sampler.
         smoothing_factor: Smoothing factor for Quadratic Sampling.
         smoothing_curve: Smoothing curve for Quadratic (Cubic) Sampling.
         seed: Random seed to use for the generation.
@@ -160,6 +164,10 @@ class SamplingParams:
         typical_p: float = 1.0,
         smoothing_factor: float = 0.0,
         smoothing_curve: float = 1.0,
+        dry_multiplier: float = 0.0,
+        dry_allowed_length: float = 2,
+        dry_base: float = 1.75,
+        dry_sequence_breakers: Union[None, str, List[str]] = [],
         seed: Optional[int] = None,
         use_beam_search: bool = False,
         length_penalty: float = 1.0,
@@ -188,7 +196,10 @@ class SamplingParams:
         self.top_p = top_p
         self.top_k = top_k
         self.top_a = top_a
-        self.min_p = min_p
+        self.dry_multiplier = dry_multiplier
+        self.dry_allowed_length = dry_allowed_length
+        self.dry_base = dry_base
+        self.dry_sequence_breakers = dry_sequence_breakers
         self.tfs = tfs
         self.eta_cutoff = eta_cutoff
         self.epsilon_cutoff = epsilon_cutoff
@@ -247,7 +258,10 @@ class SamplingParams:
             "epsilon_cutoff": 0.0,
             "typical_p": 1.0,
             "smoothing_factor": 0.0,
-            "smoothing_curve": 1.0,
+            "dry_multiplier": 0.0,
+            "dry_allowed_length": 2.0,
+            "dry_base": 1.75,
+            "dry_sequence_breakers": ["\n", ":", "\"", "*"],
             "seed": None,
             "use_beam_search": False,
             "length_penalty": 1.0,
@@ -313,6 +327,16 @@ class SamplingParams:
         if self.temperature < 0.0:
             raise ValueError(
                 f"temperature must be non-negative, got {self.temperature}.")
+        if self.dry_allowed_length < 1 or self.dry_allowed_length > 20:
+            raise ValueError(f"dry_allowed_length must be in [1, 20], got {self.dry_allowed_length}.")
+    
+        if self.dry_multiplier < 0 or self.dry_multiplier > 5:
+            raise ValueError(f"dry_multiplier must be in [0, 5], got {self.dry_multiplier}.")
+        
+        if self.dry_base < 1 or self.dry_base > 4:
+            raise ValueError(f"dry_base must be in [1, 4], got {self.dry_base}.")
+        if not isinstance(self.dry_sequence_breakers, list) or not all(isinstance(item, str) for item in self.dry_sequence_breakers):
+            raise ValueError("dry_sequence_breakers must be a list of strings.")
         if not 0.0 < self.top_p <= 1.0:
             raise ValueError(f"top_p must be in (0, 1], got {self.top_p}.")
         if self.top_k < -1 or self.top_k == 0:
@@ -328,6 +352,7 @@ class SamplingParams:
             raise ValueError("epsilon_cutoff must be in [0, 1000], got "
                              f"{self.epsilon_cutoff}.")
         # pylint: disable=unneeded-not
+                
         if not self.eta_cutoff >= 0:
             raise ValueError(
                 f"eta_cutoff must be non negative, got {self.eta_cutoff}.")
